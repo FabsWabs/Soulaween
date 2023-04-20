@@ -1,0 +1,5 @@
+/soulaween.egg-info
+**/logs
+**/model_rl
+/.vscode
+**/__pycache__
