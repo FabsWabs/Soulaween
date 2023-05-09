@@ -2,11 +2,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 NetParameter = {
-    'nInput':9,
-    'nEmb': 64, # 256,
-    'nFw': 128, # 512,
+    'nEmb': 32, # 256,
+    'nFw': 64, # 512,
     'nAttnHead': 4,
-    'nLayer': 3
+    'nLayer': 2
 }
 
 
@@ -26,10 +25,10 @@ class EncoderBlock(nn.Module):
         x = x.permute(1,2,0)  
         return x
 
-class PlaceStoneNet(nn.Module):
-    def __init__(self, act_space):
-        super(PlaceStoneNet,self).__init__()       
-        self.encoder_block = EncoderBlock(**NetParameter)
+class PlaceStoneTransformer(nn.Module):
+    def __init__(self, obs_space, act_space):
+        super(PlaceStoneTransformer,self).__init__()       
+        self.encoder_block = EncoderBlock(**NetParameter, nInput=obs_space[0])
         self.out = nn.Linear(NetParameter['nEmb'] * 16, act_space)
         # self.out = nn.Conv1d(NetParameter['nEmb'] * 16, 32, 1)
         
@@ -38,10 +37,10 @@ class PlaceStoneNet(nn.Module):
         x = self.out(x.flatten())
         return x
 
-class ChooseSetNet(nn.Module):
-    def __init__(self, act_space):
-        super(ChooseSetNet,self).__init__()       
-        self.encoder_block = EncoderBlock(**NetParameter)
+class ChooseSetTransformer(nn.Module):
+    def __init__(self, obs_space, act_space):
+        super(ChooseSetTransformer,self).__init__()       
+        self.encoder_block = EncoderBlock(**NetParameter, nInput=obs_space[0])
         self.out = nn.Linear(NetParameter['nEmb'] * 16, act_space)
         # self.out = nn.Conv1d(NetParameter['nEmb'] * 16, 10, 1)
         
@@ -51,10 +50,10 @@ class ChooseSetNet(nn.Module):
         return x
 
 
-class TargetQNet(nn.Module):
-    def __init__(self, act_space):
-        super(TargetQNet,self).__init__()       
-        self.encoder_block = EncoderBlock(**NetParameter)
+class TargetQTransformer(nn.Module):
+    def __init__(self, obs_space, act_space):
+        super(TargetQTransformer,self).__init__()       
+        self.encoder_block = EncoderBlock(**NetParameter, nInput=obs_space[0])
         self.out = nn.Linear(NetParameter['nEmb'] * 16, act_space)
         # self.out = nn.Conv1d(NetParameter['nEmb'], 1, 1)
         

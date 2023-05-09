@@ -3,12 +3,13 @@ import numpy as np
 
 class Soulaween():
     def __init__(self):
+        self.full_obs = False
+        self.win_condition = 1
         self.grid_length = 4
-        self.win_condition = 10
         self.num_squares = self.grid_length * self.grid_length
         self.act_space = {'place_stone': np.array(32),
                           'choose_set': np.array(10)}
-        self.obs_space = np.array([7, 16])
+        self.obs_space = np.array([7, 16]) if self.full_obs else np.array([3,16])
         self.possible_sets = np.array([
             [0, 1, 2, 3],
             [4, 5, 6, 7],
@@ -32,10 +33,13 @@ class Soulaween():
         my_points = np.ones((self.num_squares,)) * self.sets[self.current_player_num]
         enemy_points = np.ones((self.num_squares,)) * self.sets[(self.current_player_num + 1) % 2]
         start_player = np.ones((self.num_squares,)) \
-            if self.current_player_num == 0 else np.zeros((self.num_squares,))
+            if self.current_player_num == self.start_player else np.zeros((self.num_squares,))
         sweeps = np.ones((self.num_squares,)) * self.sweeps
-        f = np.vstack((empty, cross, circle, place_stone, choose_set, my_points, enemy_points, \
-            start_player, sweeps))
+        if self.full_obs:
+            f = np.vstack((empty, cross, circle, my_points, enemy_points, \
+                start_player, sweeps))
+        else:
+            f = np.vstack((empty, cross, circle))
         return f
 
     @property
@@ -75,6 +79,9 @@ class Soulaween():
     
     def get_act_space(self):
         return self.act_space
+    
+    def get_obs_space(self):
+        return self.obs_space
 
     def step(self, action):
         reward = 0
@@ -120,19 +127,27 @@ class Soulaween():
             self.next_move = 'place_stone'
         if np.any(self.sets >= self.win_condition):
             self.done = True
+            self.winner = 0 if self.sets[0] == self.win_condition else 1
         reward = self.sets[self.current_player_num]
-        return self.observation, reward, self.done, {}
+        return self.observation, reward, self.done, {'winner': self.winner}
 
 
     def reset(self):
         self.board = np.zeros(self.num_squares, dtype=np.int8)
         self.turns_taken = 0
         self.done = False
-        self.current_player_num = 0
+        self.start_player = np.random.randint(2)
+        self.current_player_num = self.start_player
         self.sets = np.array([0, 0])
         self.next_move = 'place_stone'
         self.sweeps = 0
+        self.winner = None
         return self.observation
+    
+    def set_board(self, state):
+        self.board = np.zeros(self.num_squares, dtype=np.int8)
+        self.board[np.argwhere(state[1]==1)] = 1
+        self.board[np.argwhere(state[2]==1)] = -1
 
     def render(self, mode='human'):
         print('-------------------------------------------------')

@@ -1,22 +1,36 @@
 import time
-import os
 import random
+import os
 from collections import namedtuple
 import numpy as np
-from datetime import datetime
+from tqdm import tqdm
 
 import torch
 
 from soulaween.env.soulaween import Soulaween
+from soulaween.networks.transformer_networks import PlaceStoneTransformer, ChooseSetTransformer, TargetQTransformer
+from soulaween.networks.linear_networks import PlaceStoneLinear, ChooseSetLinear, TargetQLinear
 
 def time_str():
     return time.strftime("%Y%m%d-%H%M%S",time.localtime())
 
+def seed_everything(seed):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
 
-def print_log(log_str, log_path):
-    with open(log_path, 'a') as f:
+
+def print_log(log_str, log_path=None):
+    if log_path is not None:
+        with open(log_path, 'a') as f:
+            print(log_str)
+            print(log_str, file=f)
+    else:
         print(log_str)
-        print(log_str, file=f)
 
 TraceSlot = namedtuple(
     'TraceSlot', ['key','state','action'])
@@ -49,6 +63,7 @@ class TraceSimulator():
                  discount=1):
         self.agent = {0:agent, 1:agent}
         self.env = env
+        self.win_cond = self.env.win_condition
         
         self.record_state = record_state
         self.discount = discount
@@ -57,9 +72,8 @@ class TraceSimulator():
     
     def random_make_games(self, n_games):
         self.buffer = {'place_stone':[], 'choose_set':[]}
-        for i in range(n_games):
+        for _ in tqdm(range(n_games)):
             self.make_game_trace()
-            print(f"Made Game {i}.")
 
         return self.buffer
     
@@ -80,7 +94,7 @@ class TraceSimulator():
                     state = state.clone(), 
                     action = action))
             state, _, done, _ = self.env.step(action)
-        scaled_point_dif = (10 + self.env.sets[0] - self.env.sets[1]) / 20
+        scaled_point_dif = (self.win_cond + self.env.sets[0] - self.env.sets[1]) / (2 * self.win_cond)
         reward = {0: scaled_point_dif, 1: 10 - scaled_point_dif}
             
         for player in [0, 1]:
@@ -104,7 +118,9 @@ class Arena():
     def multi_game_test(self, n_games, clear_result=True):
         if clear_result:
             self.reset()
-        for _ in range(n_games):
+        for _ in tqdm(range(n_games)):
+            for agent in self.agent.values():
+                agent.eval()
             self.__duel()
         self.n_wins = [np.sum(np.array(self.winner) == player) for player in [0, 1]]
         self.win_rates = [n / np.sum(self.n_wins) for n in self.n_wins]
@@ -139,7 +155,35 @@ class Arena():
     def reset(self):
         self.match_points = [[], []]
         self.winner = []
-        return 
+        return
+
+def get_networks(linear, load, obs_space, act_space, rl_folder=None):
+    moves = ['place_stone', 'choose_set']
+    Q_estimator = TargetQLinear if linear else TargetQTransformer
+    if load is not False:
+        paths = {key: os.path.join(rl_folder, f"{key}{load}") for key in moves}
+        action_net = dict()
+        value_net = {key: Q_estimator(obs_space, act_space[key]) for key in moves}
+        for key in moves:
+            action_net[key] = torch.load(paths[key])
+            value_net[key].load_state_dict(action_net[key].state_dict())
+    else:
+        if linear:
+            value_net = {key: TargetQLinear(obs_space, act_space[key]) for key in moves}
+            action_net = {'place_stone': PlaceStoneLinear(obs_space, act_space['place_stone']),
+                          'choose_set': ChooseSetLinear(obs_space, act_space['choose_set'])}
+        else:
+            value_net = {key: TargetQTransformer(obs_space, act_space[key]) for key in moves}
+            action_net = {'place_stone': PlaceStoneTransformer(obs_space, act_space['place_stone']),
+                          'choose_set': ChooseSetTransformer(obs_space, act_space['choose_set'])}  
+        for key in moves:
+            action_net[key].load_state_dict(value_net[key].state_dict())
+    return action_net, value_net
+
+def log_tensorboard(writer, epoch_stats):
+    epoch = epoch_stats['epoch']
+    writer.add_scalar('score', epoch_stats['epoch_score'], epoch)
+
 
 def render_board_from_obs(obs):
     board = np.zeros(16)
@@ -189,13 +233,12 @@ def arena_analysis(result, log_path=None):
     win_num = np.sum(result[:,:2], axis=0)
     win_rate = win_num / np.sum(win_num)
     mean_point_dif = np.mean(result[:,2])
-    if log_path:
-        header = f'{np.sum(win_num, dtype=np.int8)} games tested.'
-        print_log(header, log_path)
-        s = f'   {int(win_num[0])} wins, {int(win_num[1])} losses; '
-        s += f'Win rate: {win_rate[0] * 100:.2f} % | '
-        s += f'Mean point difference: {mean_point_dif:.1f} '
-        print_log(s, log_path)
+    header = f'{np.sum(win_num, dtype=np.int16)} games tested.'
+    print_log(header, log_path)
+    s = f'   {int(win_num[0])} wins, {int(win_num[1])} losses; '
+    s += f'Win rate: {win_rate[0] * 100:.2f} % | '
+    s += f'Mean point difference: {mean_point_dif:.1f} '
+    print_log(s, log_path)
     return mean_point_dif
 
 

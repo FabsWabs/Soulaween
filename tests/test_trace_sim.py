@@ -1,8 +1,8 @@
 import numpy as np
 
 from soulaween.utils import *
-from soulaween.agents import RandomAgent, TransformerAgent
-from soulaween.networks import *
+from soulaween.agents import RandomAgent, NetworkAgent
+from soulaween.networks.transformer_networks import *
 from soulaween.env.soulaween import Soulaween
 
 def test_random_agent():
@@ -14,10 +14,10 @@ def test_random_agent():
 def test_transformer_agent():
     env = Soulaween()
     action_net = {
-        'place_stone': PlaceStoneNet(env.get_act_space()['place_stone']).cpu(),
-        'choose_set': ChooseSetNet(env.get_act_space()['choose_set']).cpu()
+        'place_stone': PlaceStoneTransformer(env.get_act_space()['place_stone']),
+        'choose_set': ChooseSetTransformer(env.get_act_space()['choose_set'])
     }
-    agent = TransformerAgent(action_net)
+    agent = NetworkAgent(action_net)
     trace_simulator = TraceSimulator(agent, env)
     sample_dict = trace_simulator.random_make_games(1)
     obs = sample_dict['choose_set'][0].state
