@@ -1,5 +1,7 @@
 import numpy as np
-from soulaween.env.soulaween import Soulaween
+import os
+
+from soulaween.utils.utils import compute_state_ind
 
 
 class Agent():
@@ -26,16 +28,14 @@ class RandomAgent(Agent):
 
 class RuleBased(Agent):
     def __init__(self):
-        self.env = Soulaween()
+        mat_path = os.path.join('utils', 'complete_set.npz')
+        self.complete_sets = np.load(mat_path)['a']
         
     def get_action(self, next_move, state, mask):
-        legal_actions = np.argwhere(mask==1).flatten()
-        for action in legal_actions:
-            self.env.reset()
-            self.env.set_board(state)
-            _, _, done, _ = self.env.step(action)
-            if done:
-                return action
+        state_ind = compute_state_ind(state)
+        actions = np.argwhere(self.complete_sets[state_ind])
+        if actions.size != 0:
+            return actions[0]
         return self._random_action(mask)
 
 

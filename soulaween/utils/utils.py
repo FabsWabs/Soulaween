@@ -241,6 +241,12 @@ def arena_analysis(result, log_path=None):
     print_log(s, log_path)
     return mean_point_dif
 
+def compute_state_ind(state):
+    base = 3 ** np.arange(len(state[0]))
+    cr = state[1] * base
+    ci = state[2] * 2 * base
+    return int(torch.sum(cr + ci))
+
 
 def random_action_prob_scheduler(score):
     if score < -3:

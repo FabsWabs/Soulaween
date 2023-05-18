@@ -5,11 +5,15 @@ import multiprocessing
 
 from soulaween.env.soulaween import Soulaween
 
+def error(a):
+    print('Error')
+    print(a)
+
 def test_range(cpu_index=None, cpu_count=None):
     num_states = 3**16
-    if cpu_index:
+    if cpu_index is not None:
         width = np.ceil(num_states / cpu_count)
-        cpu_range = np.clip(np.arange(cpu_index * width, (cpu_index + 1) * width), a_max=num_states)
+        cpu_range = np.clip(np.arange(cpu_index * width, (cpu_index + 1) * width), a_min=None, a_max=num_states)
     else:
         cpu_range = np.arange(num_states)
 
@@ -37,11 +41,6 @@ def test_range(cpu_index=None, cpu_count=None):
         state = [empty, cross, circle]
         env.set_board(state)
 
-        # check if board already contains sets
-        sets = env._check_sets()
-        if not len(sets) == 0:
-            continue
-
         # try all legal actions
         mask = env.legal_actions
         legal_actions = np.argwhere(mask==1).flatten()
@@ -55,7 +54,8 @@ def test_range(cpu_index=None, cpu_count=None):
         
         # append legal actions to dict
         if not len(good_act) == 0:
-            cpu_dict[state_ind] = good_act    
+            cpu_dict[state_ind] = good_act
+    print(f'cpu {cpu_index} done, processed {cpu_range[-1] - cpu_range[0]} items')
     return cpu_dict
 
 
@@ -69,13 +69,18 @@ if __name__ == "__main__":
             for i in range(cpu_count):
                 pool.apply_async(test_range, 
                                 args=(i, cpu_count), 
-                                callback=set_dict.update)
+                                callback=set_dict.update,
+                                error_callback=error)
             pool.close()
             pool.join()
     else:
         set_dict.update(test_range())
 
-    with open('complete_set.pickle', 'wb') as handle:
-        pickle.dump(set_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    mat = np.zeros((3**16, 32), dtype=bool)
+    for state_ind, acts in tqdm(set_dict.items()):
+        for a in acts:
+            mat[int(state_ind), a] = True
+    print('created numpy array')
+    np.savez_compressed('complete_set.npz', mat)
 
     print('done')
