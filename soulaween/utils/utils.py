@@ -237,7 +237,7 @@ def arena_analysis(result, log_path=None):
     print_log(header, log_path)
     s = f'   {int(win_num[0])} wins, {int(win_num[1])} losses; '
     s += f'Win rate: {win_rate[0] * 100:.2f} % | '
-    s += f'Mean point difference: {mean_point_dif:.1f} '
+    s += f'Mean point difference: {mean_point_dif:.3f} '
     print_log(s, log_path)
     return mean_point_dif
 

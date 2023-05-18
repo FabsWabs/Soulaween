@@ -3,17 +3,16 @@ import os
 import torch
 
 from soulaween.env.soulaween import Soulaween
-from soulaween.utils import print_log, parallel_arena_test, arena_analysis, seed_everything, get_networks
+from soulaween.utils.utils import print_log, parallel_arena_test, arena_analysis, seed_everything, get_networks
 from soulaween.agents import NetworkAgent, RandomAgent, RuleBased
 
 
 if __name__ == "__main__":
     seed_everything(42)
-
-    load = "_5895_0.83.pt"
+    load = "_1285_0.21.pt"
+    load_model_folder = "20230517-201544"
     linear = True
-    model_str = 'linear'
-    load_model_folder = "20230504-205158"
+    model_str = 'linear' if linear else 'transformer'
     load_model_folder = os.path.join('model_rl', model_str, load_model_folder)
 
     cpu_count = 1

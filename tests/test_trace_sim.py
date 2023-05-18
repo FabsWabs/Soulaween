@@ -1,6 +1,6 @@
 import numpy as np
 
-from soulaween.utils import *
+from soulaween.utils.utils import *
 from soulaween.agents import RandomAgent, NetworkAgent
 from soulaween.networks.transformer_networks import *
 from soulaween.env.soulaween import Soulaween

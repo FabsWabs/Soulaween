@@ -8,13 +8,13 @@ import multiprocessing
 from torch.utils.tensorboard import SummaryWriter
 
 from soulaween.env.soulaween import Soulaween
-from soulaween.utils import Buffer, print_log, time_str, parallel_sampling, Transition, random_action_prob_scheduler, parallel_arena_test, arena_analysis, get_networks, log_tensorboard
+from soulaween.utils.utils import Buffer, print_log, time_str, parallel_sampling, Transition, random_action_prob_scheduler, parallel_arena_test, arena_analysis, get_networks, log_tensorboard
 from soulaween.agents import NetworkAgent, RandomAgent
 
 if __name__ == '__main__':
-    load = False # "_570_0.4454166666666667.pt"
-    load_model_folder = "first_results"
-    linear = False
+    load = "_6145_0.84.pt"
+    load_model_folder = "20230504-205158"
+    linear = True
     model_str = 'linear' if linear else 'transformer'
     time = time_str()
     model_save_path = os.path.join('model_rl', model_str, time)
@@ -55,8 +55,10 @@ if __name__ == '__main__':
     
     play_agent = NetworkAgent(action_net, random_action_prob=[0.1, 0.1])
     test_agent = NetworkAgent(action_net)
-    random_agent = RandomAgent()
-    optimizer = {key: torch.optim.Adam(value_net[key].parameters(), lr=0.0005) for key in moves}
+
+    # opponent = RandomAgent()
+    opponent = NetworkAgent(action_net, random_action_prob=[0.1, 0.1])
+    optimizer = {key: torch.optim.Adam(value_net[key].parameters(), lr=0.0001) for key in moves}
     criterion = torch.nn.SmoothL1Loss(beta=30.0)
 
     score = [-10]
@@ -107,12 +109,12 @@ if __name__ == '__main__':
                 pool = multiprocessing.Pool(cpu_count)
                 for _ in range(cpu_count):
                     pool.apply_async(parallel_arena_test, 
-                                    args=(test_agent, random_agent, cpu_test_games), 
+                                    args=(test_agent, opponent, cpu_test_games), 
                                     callback=result.append)
                 pool.close()
                 pool.join()
             else:
-                result.append(parallel_arena_test(test_agent, random_agent, test_games))
+                result.append(parallel_arena_test(test_agent, opponent, test_games))
             s = arena_analysis(result, log_path)
 
             if s >= np.max(score) or (e % 50==0):

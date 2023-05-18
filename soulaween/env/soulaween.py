@@ -117,7 +117,7 @@ class Soulaween():
                 self.turns_taken += 1
             else:
                 self.next_move = 'choose_set'
-                return self.observation, reward, self.done, {}
+                return self.observation, reward, True, {}
         else:   # self.next_move == 'choose_set':
             self.sets[self.current_player_num] += 1
             sets = self._check_sets()
