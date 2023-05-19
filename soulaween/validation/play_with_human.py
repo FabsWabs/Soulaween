@@ -1,0 +1,49 @@
+import time
+import random
+import numpy as np
+import os
+
+import torch
+
+from soulaween.env.soulaween import Soulaween
+from soulaween.agents import NetworkAgent, RandomAgent
+from soulaween.utils.utils import get_networks
+
+def read_action(legal_actions):
+    legal_actions_str = [str(i) for i in legal_actions]
+    action = input(f"Choose action from {legal_actions}: ")
+    while True:
+        if action not in legal_actions_str:
+            print("Action not legal.")
+            action = input(f"Choose action from {legal_actions}: ")
+        else:
+            break
+    return int(action)
+    
+
+if __name__ == '__main__':
+    env = Soulaween()
+
+    players = ['human', 'human']
+    
+    state = env.reset()
+    print(f"Player {env.current_player + 1} begins!")
+    time.sleep(1)
+    env.render()
+    time.sleep(1)
+
+    done = False
+
+    while not done:
+        state = torch.Tensor(state)
+        cur_player = env.current_player
+
+        legal_actions = [i for i in np.argwhere(env.legal_actions).flatten()]
+        action = read_action(legal_actions)
+            
+        time.sleep(1)
+        state, _, done, env_dict = env.step(action)
+        env.render()
+    print(f"The winner is Player {env_dict['winner'] + 1}!")
+    print(f"Thanks for playing!")
+    

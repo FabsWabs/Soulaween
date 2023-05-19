@@ -4,10 +4,8 @@ from tqdm import tqdm
 import multiprocessing
 
 from soulaween.env.soulaween import Soulaween
+from soulaween.utils.utils import error
 
-def error(a):
-    print('Error')
-    print(a)
 
 def test_range(cpu_index=None, cpu_count=None):
     num_states = 3**16

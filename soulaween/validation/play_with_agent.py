@@ -6,7 +6,7 @@ import os
 import torch
 
 from soulaween.env.soulaween import Soulaween
-from soulaween.agents import NetworkAgent, RandomAgent
+from soulaween.agents import NetworkAgent, RandomAgent, RuleBased
 from soulaween.utils.utils import get_networks
 
 def read_action(legal_actions):
@@ -24,10 +24,12 @@ def read_action(legal_actions):
 if __name__ == '__main__':
     env = Soulaween()
 
-    agent_type = input("Choose Agent from [random, transformer, linear]: ")
+    players = ['Human', 'AI']
+
+    agent_type = input("Choose Agent from [random, transformer, linear, rule_based]: ")
     while True:
-        if agent_type not in ["random", "transformer", "linear"]:
-            agent_type = input("Input invalid, choose from [random, transformer, linear]: ")
+        if agent_type not in ["random", "transformer", "linear", "rule_based"]:
+            agent_type = input("Input invalid, choose from [random, transformer, linear, rule_based]: ")
         else:
             break
     
@@ -37,8 +39,8 @@ if __name__ == '__main__':
         models = -1
         agent = NetworkAgent(models)
     elif agent_type == "linear":
-        load = "_1285_0.21.pt"
-        load_model_folder = "20230517-201544"
+        load = "_5710_0.46.pt"
+        load_model_folder = "20230518-200108"
         linear = True
         model_str = 'linear' if linear else 'transformer'
         load_model_folder = os.path.join("..", 'model_rl', model_str, load_model_folder)
@@ -49,11 +51,11 @@ if __name__ == '__main__':
 
         action_net, value_net = get_networks(linear, load, obs_space, act_space, load_model_folder)
         agent = NetworkAgent(action_net)
+    elif agent_type == "rule_based":
+        agent = RuleBased()
 
-    agent_player_number = 1
-    
     state = env.reset()
-    print(f"Player {env.current_player} begins!")
+    print(f"{players[env.current_player]} begins!")
     time.sleep(1)
     env.render()
     time.sleep(1)
@@ -62,13 +64,13 @@ if __name__ == '__main__':
 
     while not done:
         state = torch.Tensor(state)
-        player = env.current_player
+        cur_player = env.current_player
 
-        if agent_player_number == player:
+        if players[cur_player] == 'AI':
             next_move = env.next_move
             legal_actions = env.legal_actions
             action = agent.get_action(next_move, state, legal_actions)
-            print(f"Agent chose action {action}.")
+            print(f"AI chose action {action}.")
             _ = input()
         else:
             legal_actions = [i for i in np.argwhere(env.legal_actions).flatten()]
@@ -77,6 +79,6 @@ if __name__ == '__main__':
         time.sleep(1)
         state, _, done, env_dict = env.step(action)
         env.render()
-    print(f"The winner is Player {env_dict['winner']}!")
+    print(f"The winner is the {players[env_dict['winner']]}!")
     print(f"Thanks for playing!")
     

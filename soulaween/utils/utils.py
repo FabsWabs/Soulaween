@@ -247,6 +247,9 @@ def compute_state_ind(state):
     ci = state[2] * 2 * base
     return int(torch.sum(cr + ci))
 
+def error(a):
+    print('Error:')
+    print(a)
 
 def random_action_prob_scheduler(score):
     if score < -3:

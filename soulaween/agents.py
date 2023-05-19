@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import pathlib
 
 from soulaween.utils.utils import compute_state_ind
 
@@ -28,14 +29,14 @@ class RandomAgent(Agent):
 
 class RuleBased(Agent):
     def __init__(self):
-        mat_path = os.path.join('utils', 'complete_set.npz')
+        mat_path = os.path.join(pathlib.Path(__file__).parent, 'utils', 'complete_set.npz')
         self.complete_sets = np.load(mat_path)['a']
         
     def get_action(self, next_move, state, mask):
         state_ind = compute_state_ind(state)
         actions = np.argwhere(self.complete_sets[state_ind])
         if actions.size != 0:
-            return actions[0]
+            return actions[0][0]
         return self._random_action(mask)
 
 

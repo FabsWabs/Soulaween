@@ -8,8 +8,8 @@ import multiprocessing
 from torch.utils.tensorboard import SummaryWriter
 
 from soulaween.env.soulaween import Soulaween
-from soulaween.utils.utils import Buffer, print_log, time_str, parallel_sampling, Transition, random_action_prob_scheduler, parallel_arena_test, arena_analysis, get_networks, log_tensorboard
-from soulaween.agents import NetworkAgent, RandomAgent
+from soulaween.utils.utils import Buffer, print_log, time_str, parallel_sampling, Transition, random_action_prob_scheduler, parallel_arena_test, arena_analysis, get_networks, log_tensorboard, error
+from soulaween.agents import NetworkAgent, RandomAgent, RuleBased
 
 if __name__ == '__main__':
     load = "_6145_0.84.pt"
@@ -57,7 +57,8 @@ if __name__ == '__main__':
     test_agent = NetworkAgent(action_net)
 
     # opponent = RandomAgent()
-    opponent = NetworkAgent(action_net, random_action_prob=[0.1, 0.1])
+    # opponent = NetworkAgent(action_net, random_action_prob=[0.1, 0.1])
+    opponent = RuleBased()
     optimizer = {key: torch.optim.Adam(value_net[key].parameters(), lr=0.0001) for key in moves}
     criterion = torch.nn.SmoothL1Loss(beta=30.0)
 
@@ -72,7 +73,8 @@ if __name__ == '__main__':
             for _ in range(cpu_count):
                 pool.apply_async(parallel_sampling,
                                 args=(play_agent, cpu_sample_games), 
-                                callback=buffer.extend)
+                                callback=buffer.extend,
+                                error_callback=error)
             pool.close()
             pool.join()
         else:
