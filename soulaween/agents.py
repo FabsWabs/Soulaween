@@ -58,7 +58,9 @@ class NetworkAgent(Agent):
         action_output = np.argmax(output)
         return action_output
     
-    
+    def get_action_nets(self):
+        return self.model
+
     def set_action_nets(self, value_net):
         for key in value_net.keys():
             self.model[key].load_state_dict(value_net[key].state_dict())

@@ -58,10 +58,10 @@ class Buffer():
 
 
 class TraceSimulator():
-    def __init__(self, agent, env=Soulaween(),
+    def __init__(self, agent, opponent, env=Soulaween(),
                  record_state=['place_stone', 'choose_set'], 
                  discount=1):
-        self.agent = {0:agent, 1:agent}
+        self.agent = {0:agent, 1:opponent}
         self.env = env
         self.win_cond = self.env.win_condition
         
@@ -88,16 +88,16 @@ class TraceSimulator():
             next_move = self.env.next_move
             legal_actions = self.env.legal_actions
             action = self.agent[player].get_action(next_move, state, legal_actions)
-            if player in [0, 1] and (next_move in self.record_state) and (action is not None):
+            if player == 0 and (next_move in self.record_state) and (action is not None):
                 trace[player].append(TraceSlot(
                     key = next_move,
                     state = state.clone(), 
                     action = action))
             state, _, done, _ = self.env.step(action)
         scaled_point_dif = (self.win_cond + self.env.sets[0] - self.env.sets[1]) / (2 * self.win_cond)
-        reward = {0: scaled_point_dif, 1: 10 - scaled_point_dif}
+        reward = {0: scaled_point_dif, 1: 1 - scaled_point_dif}
             
-        for player in [0, 1]:
+        for player in [0]:
             for rev_step in range(len(trace[player])):
                 key = trace[player][-rev_step-1].key
                 action = trace[player][-rev_step-1].action
@@ -122,8 +122,9 @@ class Arena():
             for agent in self.agent.values():
                 agent.eval()
             self.__duel()
-        self.n_wins = [np.sum(np.array(self.winner) == player) for player in [0, 1]]
+        self.n_wins = [np.sum(np.array(self.winner) == player) for player in [0, 1, 2]]
         self.win_rates = [n / np.sum(self.n_wins) for n in self.n_wins]
+        assert self.n_wins[2] == np.sum(self.match_points[0] == self.match_points[1])
         return self.n_wins, self.match_points
         
     def __duel(self):
@@ -136,11 +137,11 @@ class Arena():
             next_move = self.env.next_move
             legal_actions = self.env.legal_actions
             action = self.agent[player].get_action(next_move, state, legal_actions)
-            state, _, done, _ = self.env.step(action)
+            state, _, done, winner = self.env.step(action)
 
         self.match_points[0].append(self.env.sets[0])
         self.match_points[1].append(self.env.sets[1])
-        self.winner.append(np.argmax(self.env.sets))
+        self.winner.append(winner['winner'])
     
     def test_result_str(self):
         assert len(self.winner) > 0
@@ -182,7 +183,9 @@ def get_networks(linear, load, obs_space, act_space, rl_folder=None):
 
 def log_tensorboard(writer, epoch_stats):
     epoch = epoch_stats['epoch']
-    writer.add_scalar('score', epoch_stats['epoch_score'], epoch)
+    del epoch_stats['epoch']
+    for k, v in epoch_stats.items():
+        writer.add_scalar(k, v, epoch)
 
 
 def render_board_from_obs(obs):
@@ -215,8 +218,8 @@ def render_board_from_obs(obs):
     print(f'Next Move: {next_move}\n')
 
 
-def parallel_sampling(agent, n_games):
-    trace_simulator = TraceSimulator(agent)
+def parallel_sampling(agent, opponent, n_games):
+    trace_simulator = TraceSimulator(agent, opponent)
     sample_dict = trace_simulator.random_make_games(n_games)
     return sample_dict
 
@@ -230,12 +233,15 @@ def parallel_arena_test(agent, opponent, n_games):
 
 def arena_analysis(result, log_path=None):
     result = np.array(result)
-    win_num = np.sum(result[:,:2], axis=0)
+    win_num = np.sum(result[:,:3], axis=0)
     win_rate = win_num / np.sum(win_num)
-    mean_point_dif = np.mean(result[:,2])
+    mean_point_dif = np.mean(result[:,3])
+    # only for debugging!!! only working for win_condition = 1
+    assert np.isclose((win_num[0] - win_num[1]) / np.sum(win_num), mean_point_dif)
+    
     header = f'{np.sum(win_num, dtype=np.int16)} games tested.'
     print_log(header, log_path)
-    s = f'   {int(win_num[0])} wins, {int(win_num[1])} losses; '
+    s = f'   {int(win_num[0])} wins, {int(win_num[1])} losses, {int(win_num[2])} draws; '
     s += f'Win rate: {win_rate[0] * 100:.2f} % | '
     s += f'Mean point difference: {mean_point_dif:.3f} '
     print_log(s, log_path)
@@ -252,15 +258,15 @@ def error(a):
     print(a)
 
 def random_action_prob_scheduler(score):
-    if score < -3:
+    if score < -0.5:
         p = [0.20] * 2
-    elif score < -1:
+    elif score < -0.2:
         p = [0.15] * 2
-    elif score < 2:
+    elif score < 0.0:
         p = [0.125] * 2
-    elif score < 5:
+    elif score < 0.1:
         p = [0.10] * 2
-    elif score < 8:
+    elif score < 0.2:
         p = [0.075] * 2
     else:
         p = [0.05] * 2

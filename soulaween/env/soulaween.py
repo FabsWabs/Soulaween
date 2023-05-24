@@ -73,6 +73,14 @@ class Soulaween():
     def _board_full(self):
         return not np.any(self.board == 0)
     
+    def _determine_winner(self):
+        if self.sets[0] > self.sets[1]:
+            self.winner = 0
+        elif self.sets[0] < self.sets[1]:
+            self.winner = 1
+        else:
+            self.winner = 2
+    
     def _clean_board(self, action):
         remove = 1 if action < 16 else -1
         self.board = np.where(self.board==remove, 0, self.board)
@@ -112,14 +120,14 @@ class Soulaween():
                     self.sweeps += 1
                     if self.sweeps == 10:
                         self.done = True
-                        return self.observation, reward, self.done, {}
+                        self._determine_winner()
+                        return self.observation, reward, self.done, {'winner': self.winner}
                 self.current_player_num = 1 if self.current_player_num == 0 else 0
                 self.turns_taken += 1
             else:
+                self.sets[self.current_player_num] += 1
                 self.next_move = 'choose_set'
-                return self.observation, reward, True, {}
         else:   # self.next_move == 'choose_set':
-            self.sets[self.current_player_num] += 1
             sets = self._check_sets()
             self.board[sets[action]] = 0
             self.current_player_num = 1 if self.current_player_num == 0 else 0
@@ -127,7 +135,7 @@ class Soulaween():
             self.next_move = 'place_stone'
         if np.any(self.sets >= self.win_condition):
             self.done = True
-            self.winner = 0 if self.sets[0] == self.win_condition else 1
+            self._determine_winner()
         reward = self.sets[self.current_player_num]
         return self.observation, reward, self.done, {'winner': self.winner}
 
