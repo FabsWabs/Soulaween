@@ -158,8 +158,10 @@ class Arena():
         self.winner = []
         return
 
-def get_networks(linear, load, obs_space, act_space, rl_folder=None):
-    moves = ['place_stone', 'choose_set']
+def get_networks(linear, load, obs_space, act_space, rl_folder=None, with_choose_set=True):
+    moves = ['place_stone']
+    if with_choose_set:
+        moves.append('choose_set')
     Q_estimator = TargetQLinear if linear else TargetQTransformer
     if load is not False:
         paths = {key: os.path.join(rl_folder, f"{key}{load}") for key in moves}
@@ -171,12 +173,14 @@ def get_networks(linear, load, obs_space, act_space, rl_folder=None):
     else:
         if linear:
             value_net = {key: TargetQLinear(obs_space, act_space[key]) for key in moves}
-            action_net = {'place_stone': PlaceStoneLinear(obs_space, act_space['place_stone']),
-                          'choose_set': ChooseSetLinear(obs_space, act_space['choose_set'])}
+            action_net = {'place_stone': PlaceStoneLinear(obs_space, act_space['place_stone'])}
+            if with_choose_set:
+                action_net['choose_set'] = ChooseSetLinear(obs_space, act_space['choose_set'])
         else:
             value_net = {key: TargetQTransformer(obs_space, act_space[key]) for key in moves}
-            action_net = {'place_stone': PlaceStoneTransformer(obs_space, act_space['place_stone']),
-                          'choose_set': ChooseSetTransformer(obs_space, act_space['choose_set'])}  
+            action_net = {'place_stone': PlaceStoneTransformer(obs_space, act_space['place_stone'])}
+            if with_choose_set:
+                action_net['choose_set'] = ChooseSetTransformer(obs_space, act_space['choose_set'])
         for key in moves:
             action_net[key].load_state_dict(value_net[key].state_dict())
     return action_net, value_net

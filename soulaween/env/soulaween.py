@@ -2,13 +2,15 @@ import numpy as np
     
 
 class Soulaween():
-    def __init__(self):
+    def __init__(self, with_choose_set=True):
         self.full_obs = False
+        self.with_choose_set = with_choose_set
         self.win_condition = 1
         self.grid_length = 4
         self.num_squares = self.grid_length * self.grid_length
-        self.act_space = {'place_stone': np.array(32),
-                          'choose_set': np.array(10)}
+        self.act_space = {'place_stone': np.array(32)}
+        if with_choose_set:
+            self.act_space['choose_set'] = np.array(10)
         self.obs_space = np.array([7, 16]) if self.full_obs else np.array([3,16])
         self.possible_sets = np.array([
             [0, 1, 2, 3],
@@ -28,8 +30,6 @@ class Soulaween():
         empty = np.where(self.board==0, 1, 0)
         cross = np.where(self.board==1, 1, 0)
         circle = np.where(self.board==-1, 1, 0)
-        place_stone = np.ones((self.num_squares,)) * np.where(self.next_move =='place_stone', 1, 0)
-        choose_set = np.ones((self.num_squares,)) * np.where(self.next_move =='choose_set', 1, 0)
         my_points = np.ones((self.num_squares,)) * self.sets[self.current_player_num]
         enemy_points = np.ones((self.num_squares,)) * self.sets[(self.current_player_num + 1) % 2]
         start_player = np.ones((self.num_squares,)) \
@@ -92,7 +92,6 @@ class Soulaween():
         return self.obs_space
 
     def step(self, action):
-        reward = 0
         if self.next_move == 'place_stone':
             square = action % self.num_squares
             self.board[square] = 1 if action < 16 else -1
@@ -111,10 +110,12 @@ class Soulaween():
                 self.board[flip_square] *= -1
             
             sets = self._check_sets()
+            reward = 1 if sets else 0
             if len(sets) < 2:
                 if len(sets) == 1:
                     self.sets[self.current_player_num] += 1
                     self.board[list(sets.values())[0]] = 0
+                    reward = 1
                 if self._board_full():
                     self._clean_board(action)
                     self.sweeps += 1
@@ -126,8 +127,15 @@ class Soulaween():
                 self.turns_taken += 1
             else:
                 self.sets[self.current_player_num] += 1
-                self.next_move = 'choose_set'
+                if self.with_choose_set:
+                    self.next_move = 'choose_set'
+                else:
+                    set = np.random.choice(sets.keys())
+                    self.board[set] = 0
+                    self.current_player_num = 1 if self.current_player_num == 0 else 0
+                    self.turns_taken += 1
         else:   # self.next_move == 'choose_set':
+            reward = 0
             sets = self._check_sets()
             self.board[sets[action]] = 0
             self.current_player_num = 1 if self.current_player_num == 0 else 0
@@ -136,7 +144,6 @@ class Soulaween():
         if np.any(self.sets >= self.win_condition):
             self.done = True
             self._determine_winner()
-        reward = self.sets[self.current_player_num]
         return self.observation, reward, self.done, {'winner': self.winner}
 
 

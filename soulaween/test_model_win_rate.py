@@ -1,6 +1,5 @@
 import multiprocessing
 import os
-import torch
 
 from soulaween.env.soulaween import Soulaween
 from soulaween.utils.utils import print_log, parallel_arena_test, arena_analysis, seed_everything, get_networks
@@ -9,8 +8,8 @@ from soulaween.agents import NetworkAgent, RandomAgent, RuleBased
 
 if __name__ == "__main__":
     seed_everything(42)
-    load = "_1285_0.21.pt"
-    load_model_folder = "20230517-201544"
+    load = ".pt"
+    load_model_folder = "best"
     linear = True
     model_str = 'linear' if linear else 'transformer'
     load_model_folder = os.path.join('model_rl', model_str, load_model_folder)
@@ -24,16 +23,17 @@ if __name__ == "__main__":
     if mult_proc:
         cpu_test_games = test_games // cpu_count
     
-    moves = ['place_stone', 'choose_set']
+    moves = ['place_stone'] #, 'choose_set']
+    with_choose_set = True if len(moves) == 2 else False
 
-    env = Soulaween()
+    env = Soulaween(with_choose_set=with_choose_set)
     obs_space = env.get_obs_space()
     act_space = env.get_act_space()
 
-    action_net, value_net = get_networks(linear, load, obs_space, act_space, load_model_folder)
+    action_net, value_net = get_networks(linear, load, obs_space, act_space, load_model_folder, with_choose_set=with_choose_set)
     test_agent = NetworkAgent(action_net)
-    # random_agent = RuleBased()
-    random_agent = RandomAgent()
+    random_agent = RuleBased()
+    # random_agent = RandomAgent()
 
 
     print_log('TESTING:', log_path)
