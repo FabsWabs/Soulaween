@@ -46,8 +46,8 @@ class NetworkAgent(Agent):
         for key in self.model.keys():
             self.model[key].eval()
         
-        self.random_action_prob = {'place_stone':random_action_prob[0],
-                                   'choose_set':random_action_prob[1]}
+        self.random_action_prob = {'place_stone': random_action_prob[0],
+                                   'choose_set': random_action_prob[1]}
 
     def get_action(self, next_move, state, mask):
         p = np.random.rand()
@@ -66,8 +66,8 @@ class NetworkAgent(Agent):
             self.model[key].load_state_dict(value_net[key].state_dict())
         
     def set_random_prob(self, random_action_prob):
-        self.random_action_prob = {'place_stone':random_action_prob[0],
-                                   'choose_set':random_action_prob[1]}
+        self.random_action_prob = {'place_stone': random_action_prob[0],
+                                   'choose_set': random_action_prob[1]}
     
     def eval(self):
         for key in self.model.keys():
